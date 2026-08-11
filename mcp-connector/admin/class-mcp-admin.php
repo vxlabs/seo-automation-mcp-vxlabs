@@ -22,6 +22,7 @@ class Mcp_Admin {
 	private function __construct() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'admin_post_mcp_save_business_context', array( $this, 'save_business_context' ) );
 		add_action( 'wp_ajax_mcp_generate_key', array( $this, 'ajax_generate_key' ) );
 		add_action( 'wp_ajax_mcp_revoke_key', array( $this, 'ajax_revoke_key' ) );
 		add_action( 'wp_ajax_mcp_delete_key', array( $this, 'ajax_delete_key' ) );
@@ -37,10 +38,28 @@ class Mcp_Admin {
 			'dashicons-rest-api',
 			80
 		);
+
+		add_submenu_page(
+			'mcp-connector',
+			'API Keys',
+			'API Keys',
+			self::CAPABILITY,
+			'mcp-connector',
+			array( $this, 'render_page' )
+		);
+
+		add_submenu_page(
+			'mcp-connector',
+			'Business Context',
+			'Business Context',
+			self::CAPABILITY,
+			'mcp-business-context',
+			array( $this, 'render_business_context_page' )
+		);
 	}
 
 	public function enqueue_assets( $hook ) {
-		if ( 'toplevel_page_mcp-connector' !== $hook ) {
+		if ( ! in_array( $hook, array( 'toplevel_page_mcp-connector', 'mcp-connector_page_mcp-business-context' ), true ) ) {
 			return;
 		}
 
@@ -81,6 +100,40 @@ class Mcp_Admin {
 		require MCP_CONNECTOR_DIR . 'admin/views/page-api-keys.php';
 	}
 
+	public function render_business_context_page() {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_die( 'You do not have permission to access this page.' );
+		}
+
+		$stored      = Mcp_Business_Context::get();
+		$context     = $stored['context'];
+		$definitions = Mcp_Business_Context::field_definitions();
+		$seo_provider = Mcp_Seo_Service::detect_provider();
+		$sections    = array(
+			'identity'    => 'Business identity',
+			'contact'     => 'Public contact and locations',
+			'positioning' => 'Audience and positioning',
+			'editorial'   => 'Editorial guardrails',
+			'seo'         => 'SEO strategy',
+		);
+
+		require MCP_CONNECTOR_DIR . 'admin/views/page-business-context.php';
+	}
+
+	public function save_business_context() {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_die( 'You do not have permission to update business context.', 403 );
+		}
+
+		check_admin_referer( 'mcp_save_business_context' );
+		$input  = isset( $_POST['context'] ) && is_array( $_POST['context'] ) ? wp_unslash( $_POST['context'] ) : array();
+		$result = Mcp_Business_Context::update( $input, get_current_user_id() );
+		$status = is_wp_error( $result ) ? 'error' : 'saved';
+
+		wp_safe_redirect( add_query_arg( 'mcp-context-status', $status, admin_url( 'admin.php?page=mcp-business-context' ) ) );
+		exit;
+	}
+
 	public function ajax_generate_key() {
 		check_ajax_referer( self::NONCE_ACTION, 'nonce' );
 
@@ -110,9 +163,10 @@ class Mcp_Admin {
 
 		wp_send_json_success(
 			array(
-				'full_key'      => $result['full_key'],
-				'label'         => $result['label'],
-				'connector_url' => $endpoint_url . $separator . 'api-key=' . rawurlencode( $result['full_key'] ),
+					'full_key'      => $result['full_key'],
+					'label'         => $result['label'],
+					'endpoint_url'  => $endpoint_url,
+					'connector_url' => $endpoint_url . $separator . 'api-key=' . rawurlencode( $result['full_key'] ),
 			)
 		);
 	}

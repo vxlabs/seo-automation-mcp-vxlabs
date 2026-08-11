@@ -15,6 +15,8 @@ class Mcp_Connector {
 	}
 
 	private function __construct() {
+		add_action( 'init', array( 'Mcp_Business_Context', 'register_post_type' ), 5 );
+		add_action( 'init', array( 'Mcp_Seo_Service', 'register' ), 6 );
 		add_action( 'init', array( $this, 'register_rewrite_rule' ) );
 		add_action( 'init', array( $this, 'maybe_flush_rewrites' ), 20 );
 		add_action( 'rest_api_init', array( 'Mcp_Rest_Controller', 'register_routes' ) );

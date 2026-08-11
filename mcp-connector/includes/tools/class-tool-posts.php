@@ -26,6 +26,9 @@ class Mcp_Tool_Posts {
 			'orderby'        => 'date',
 			'order'          => 'DESC',
 		);
+		if ( 'publish' !== $status && ! current_user_can( 'edit_others_posts' ) ) {
+			$query_args['author'] = get_current_user_id();
+		}
 
 		if ( ! empty( $args['search'] ) ) {
 			$query_args['s'] = sanitize_text_field( $args['search'] );
@@ -66,9 +69,27 @@ class Mcp_Tool_Posts {
 		}
 
 		$status = self::sanitize_status( $args['status'] ?? 'draft' );
+		if ( ! $status ) {
+			return new WP_Error( 'mcp_invalid_param', 'status must be one of: ' . implode( ', ', self::ALLOWED_STATUSES ) );
+		}
 
-		if ( 'publish' === $status && ! current_user_can( 'publish_posts' ) ) {
+		if ( in_array( $status, array( 'publish', 'private' ), true ) && ! current_user_can( 'publish_posts' ) ) {
 			return new WP_Error( 'mcp_forbidden', 'You do not have permission to publish posts.' );
+		}
+
+		$category_ids = array();
+		$tag_ids      = array();
+		if ( ! empty( $args['categories'] ) ) {
+			$category_ids = self::resolve_terms( $args['categories'], 'category' );
+			if ( is_wp_error( $category_ids ) ) {
+				return $category_ids;
+			}
+		}
+		if ( ! empty( $args['tags'] ) ) {
+			$tag_ids = self::resolve_terms( $args['tags'], 'post_tag' );
+			if ( is_wp_error( $tag_ids ) ) {
+				return $tag_ids;
+			}
 		}
 
 		$postarr = array(
@@ -78,6 +99,9 @@ class Mcp_Tool_Posts {
 			'post_type'    => 'post',
 			'post_author'  => get_current_user_id(),
 		);
+		if ( isset( $args['slug'] ) ) {
+			$postarr['post_name'] = sanitize_title( $args['slug'] );
+		}
 
 		if ( isset( $args['excerpt'] ) ) {
 			$postarr['post_excerpt'] = sanitize_text_field( $args['excerpt'] );
@@ -89,12 +113,12 @@ class Mcp_Tool_Posts {
 			return $post_id;
 		}
 
-		if ( ! empty( $args['categories'] ) && is_array( $args['categories'] ) ) {
-			wp_set_post_categories( $post_id, self::resolve_terms( $args['categories'], 'category' ) );
+		if ( $category_ids ) {
+			wp_set_post_categories( $post_id, $category_ids );
 		}
 
-		if ( ! empty( $args['tags'] ) && is_array( $args['tags'] ) ) {
-			wp_set_post_tags( $post_id, array_map( 'sanitize_text_field', $args['tags'] ) );
+		if ( $tag_ids ) {
+			wp_set_object_terms( $post_id, $tag_ids, 'post_tag', false );
 		}
 
 		return self::format_post( get_post( $post_id ), true );
@@ -115,8 +139,20 @@ class Mcp_Tool_Posts {
 		if ( ! current_user_can( 'edit_post', $post_id ) ) {
 			return new WP_Error( 'mcp_forbidden', 'You do not have permission to edit this post.' );
 		}
+		if ( isset( $args['expected_modified_gmt'] ) && $args['expected_modified_gmt'] !== $post->post_modified_gmt ) {
+			return new WP_Error( 'mcp_edit_conflict', 'The post changed after it was read. Fetch it again before updating.' );
+		}
 
 		$postarr = array( 'ID' => $post_id );
+		$resolved_terms = array();
+		foreach ( array( 'categories' => 'category', 'tags' => 'post_tag' ) as $arg_key => $taxonomy ) {
+			if ( array_key_exists( $arg_key, $args ) ) {
+				$resolved_terms[ $taxonomy ] = self::resolve_terms( is_array( $args[ $arg_key ] ) ? $args[ $arg_key ] : array(), $taxonomy );
+				if ( is_wp_error( $resolved_terms[ $taxonomy ] ) ) {
+					return $resolved_terms[ $taxonomy ];
+				}
+			}
+		}
 
 		if ( isset( $args['title'] ) ) {
 			$postarr['post_title'] = sanitize_text_field( $args['title'] );
@@ -127,9 +163,15 @@ class Mcp_Tool_Posts {
 		if ( isset( $args['excerpt'] ) ) {
 			$postarr['post_excerpt'] = sanitize_text_field( $args['excerpt'] );
 		}
+		if ( isset( $args['slug'] ) ) {
+			$postarr['post_name'] = sanitize_title( $args['slug'] );
+		}
 		if ( isset( $args['status'] ) ) {
 			$status = self::sanitize_status( $args['status'] );
-			if ( 'publish' === $status && ! current_user_can( 'publish_posts' ) ) {
+			if ( ! $status ) {
+				return new WP_Error( 'mcp_invalid_param', 'status must be one of: ' . implode( ', ', self::ALLOWED_STATUSES ) );
+			}
+			if ( in_array( $status, array( 'publish', 'private' ), true ) && ! current_user_can( 'publish_posts' ) ) {
 				return new WP_Error( 'mcp_forbidden', 'You do not have permission to publish posts.' );
 			}
 			$postarr['post_status'] = $status;
@@ -141,24 +183,38 @@ class Mcp_Tool_Posts {
 			return $result;
 		}
 
+		foreach ( $resolved_terms as $taxonomy => $term_ids ) {
+			wp_set_object_terms( $post_id, $term_ids, $taxonomy, false );
+		}
+
 		return self::format_post( get_post( $post_id ), true );
 	}
 
 	private static function sanitize_status( $status ) {
 		$status = sanitize_key( $status );
-		return in_array( $status, self::ALLOWED_STATUSES, true ) ? $status : 'draft';
+		return in_array( $status, self::ALLOWED_STATUSES, true ) ? $status : null;
 	}
 
 	private static function resolve_terms( $names, $taxonomy ) {
+		$taxonomy_object = get_taxonomy( $taxonomy );
+		if ( ! $taxonomy_object || ! current_user_can( $taxonomy_object->cap->assign_terms ) ) {
+			return new WP_Error( 'mcp_forbidden', 'You do not have permission to assign these terms.' );
+		}
 		$ids = array();
 		foreach ( $names as $name ) {
 			$name = sanitize_text_field( $name );
+			if ( '' === $name ) {
+				continue;
+			}
 			$term = term_exists( $name, $taxonomy );
 			if ( ! $term ) {
+				if ( ! current_user_can( $taxonomy_object->cap->manage_terms ) ) {
+					return new WP_Error( 'mcp_forbidden', 'A requested term does not exist and you do not have permission to create it: ' . $name );
+				}
 				$term = wp_insert_term( $name, $taxonomy );
 			}
 			if ( ! is_wp_error( $term ) ) {
-				$ids[] = (int) $term['term_id'];
+				$ids[] = is_array( $term ) ? (int) $term['term_id'] : (int) $term;
 			}
 		}
 		return $ids;
@@ -166,13 +222,18 @@ class Mcp_Tool_Posts {
 
 	private static function format_post( $post, $with_content = false ) {
 		$data = array(
-			'id'        => $post->ID,
-			'title'     => get_the_title( $post ),
-			'status'    => $post->post_status,
-			'author_id' => (int) $post->post_author,
-			'date'      => $post->post_date_gmt,
-			'link'      => get_permalink( $post ),
-			'excerpt'   => get_the_excerpt( $post ),
+			'id'                => $post->ID,
+			'title'             => get_the_title( $post ),
+			'slug'              => $post->post_name,
+			'status'            => $post->post_status,
+			'author_id'         => (int) $post->post_author,
+			'date'              => $post->post_date_gmt,
+			'modified_gmt'      => $post->post_modified_gmt,
+			'link'              => get_permalink( $post ),
+			'excerpt'           => get_the_excerpt( $post ),
+			'featured_media_id' => (int) get_post_thumbnail_id( $post ),
+			'categories'        => wp_get_post_terms( $post->ID, 'category', array( 'fields' => 'names' ) ),
+			'tags'              => wp_get_post_terms( $post->ID, 'post_tag', array( 'fields' => 'names' ) ),
 		);
 
 		if ( $with_content ) {

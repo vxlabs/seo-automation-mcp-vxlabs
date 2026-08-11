@@ -19,17 +19,154 @@ class Mcp_Tool_Registry {
 		}
 
 		self::$tools = array(
+			'get_business_context' => array(
+				'handler'     => array( 'Mcp_Tool_Seo', 'get_business_context' ),
+				'description' => 'Read the site owner\'s business facts, audiences, positioning, editorial guardrails, and SEO priorities before writing or optimizing content.',
+				'inputSchema' => array(
+					'type'                 => 'object',
+					'properties'           => array(),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'update_business_context' => array(
+				'handler'     => array( 'Mcp_Tool_Seo', 'update_business_context' ),
+				'description' => 'Update selected business-context fields. Requires a key bound to an administrator. Omitted fields are preserved.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'context' => array(
+							'type'                 => 'object',
+							'additionalProperties' => true,
+						),
+					),
+					'required'             => array( 'context' ),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'get_seo_metadata' => array(
+				'handler'     => array( 'Mcp_Tool_Seo', 'get_seo_metadata' ),
+				'description' => 'Get connector-managed SEO metadata, robots directives, provider status, and JSON-LD for a post or page.',
+				'inputSchema' => array(
+					'type'                 => 'object',
+					'properties'           => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
+					'required'             => array( 'id' ),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'update_seo_metadata' => array(
+				'handler'     => array( 'Mcp_Tool_Seo', 'update_seo_metadata' ),
+				'description' => 'Update SEO title, meta description, canonical URL, robots directives, focus topic, or Schema.org JSON-LD for a post or page. Omitted fields are preserved.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'            => array( 'type' => 'integer', 'minimum' => 1 ),
+						'title'         => array( 'type' => 'string', 'maxLength' => 255 ),
+						'description'   => array( 'type' => 'string', 'maxLength' => 500 ),
+						'canonical_url' => array( 'type' => 'string', 'format' => 'uri' ),
+						'focus_topic'   => array( 'type' => 'string', 'maxLength' => 255, 'description' => 'Internal editorial target; this is not emitted as a meta-keywords tag.' ),
+						'robots'        => array( 'type' => 'array', 'items' => array( 'type' => 'string', 'enum' => array( 'noindex', 'nofollow', 'noarchive', 'nosnippet', 'noimageindex' ) ), 'uniqueItems' => true ),
+						'schema'        => array( 'type' => array( 'object', 'null' ), 'description' => 'A Schema.org object containing @type, or an @graph. Pass null to remove it.' ),
+					),
+					'required'             => array( 'id' ),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'audit_content_seo' => array(
+				'handler'     => array( 'Mcp_Tool_Seo', 'audit_content_seo' ),
+				'description' => 'Run deterministic on-page checks for a post or page. Results are diagnostics, not a search ranking score.',
+				'inputSchema' => array(
+					'type'                 => 'object',
+					'properties'           => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
+					'required'             => array( 'id' ),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'list_content_revisions' => array(
+				'handler'     => array( 'Mcp_Tool_Seo', 'list_content_revisions' ),
+				'description' => 'List saved WordPress revisions for a post or page before or after making an optimization.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'       => array( 'type' => 'integer', 'minimum' => 1 ),
+						'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_PER_PAGE ),
+						'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
+					),
+					'required'             => array( 'id' ),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'get_content_revision' => array(
+				'handler'     => array( 'Mcp_Tool_Seo', 'get_content_revision' ),
+				'description' => 'Read a specific saved revision of a post or page for comparison or recovery planning.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'          => array( 'type' => 'integer', 'minimum' => 1 ),
+						'revision_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+					),
+					'required'             => array( 'id', 'revision_id' ),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'list_media' => array(
+				'handler'     => array( 'Mcp_Tool_Media', 'list_media' ),
+				'description' => 'List media-library items and their alt text, dimensions, type, and attachment URL.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'search'    => array( 'type' => 'string' ),
+						'mime_type' => array( 'type' => 'string', 'description' => 'For example image or image/jpeg.' ),
+						'per_page'  => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_PER_PAGE ),
+						'page'      => array( 'type' => 'integer', 'minimum' => 1 ),
+					),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'get_media' => array(
+				'handler'     => array( 'Mcp_Tool_Media', 'get_media' ),
+				'description' => 'Get one media-library item including its alt text and dimensions.',
+				'inputSchema' => array(
+					'type'                 => 'object',
+					'properties'           => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
+					'required'             => array( 'id' ),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'update_media_alt_text' => array(
+				'handler'     => array( 'Mcp_Tool_Media', 'update_media_alt_text' ),
+				'description' => 'Set accurate, concise alt text on an image attachment. Use an empty string only when the image is decorative.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'       => array( 'type' => 'integer', 'minimum' => 1 ),
+						'alt_text' => array( 'type' => 'string', 'maxLength' => 500 ),
+					),
+					'required'             => array( 'id', 'alt_text' ),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
 			'list_posts'      => array(
 				'handler'      => array( 'Mcp_Tool_Posts', 'list_posts' ),
 				'description'  => 'List blog posts, optionally filtered by status or search term.',
 				'inputSchema'  => array(
 					'type'       => 'object',
 					'properties' => array(
-						'status'   => array( 'type' => 'string', 'description' => 'draft|pending|publish|private|any' ),
+						'status'   => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'publish', 'private', 'any' ) ),
 						'search'   => array( 'type' => 'string' ),
-						'per_page' => array( 'type' => 'integer' ),
-						'page'     => array( 'type' => 'integer' ),
+						'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_PER_PAGE ),
+						'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
 					),
+					'additionalProperties' => false,
 				),
 				'annotations'  => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -38,8 +175,9 @@ class Mcp_Tool_Registry {
 				'description' => 'Get a single blog post by ID.',
 				'inputSchema' => array(
 					'type'       => 'object',
-					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'properties' => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
 					'required'   => array( 'id' ),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -51,12 +189,14 @@ class Mcp_Tool_Registry {
 					'properties' => array(
 						'title'      => array( 'type' => 'string' ),
 						'content'    => array( 'type' => 'string' ),
-						'status'     => array( 'type' => 'string', 'description' => 'draft|pending|publish|private, default draft' ),
+						'status'     => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'publish', 'private' ), 'description' => 'Defaults to draft.' ),
+						'slug'       => array( 'type' => 'string' ),
 						'excerpt'    => array( 'type' => 'string' ),
 						'categories' => array( 'type' => 'array', 'items' => array( 'type' => 'string' ) ),
 						'tags'       => array( 'type' => 'array', 'items' => array( 'type' => 'string' ) ),
 					),
 					'required'   => array( 'title', 'content' ),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false ),
 			),
@@ -66,13 +206,18 @@ class Mcp_Tool_Registry {
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => array(
-						'id'      => array( 'type' => 'integer' ),
+						'id'      => array( 'type' => 'integer', 'minimum' => 1 ),
 						'title'   => array( 'type' => 'string' ),
 						'content' => array( 'type' => 'string' ),
-						'status'  => array( 'type' => 'string' ),
+						'status'  => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'publish', 'private' ) ),
 						'excerpt' => array( 'type' => 'string' ),
+						'slug'    => array( 'type' => 'string' ),
+						'categories' => array( 'type' => 'array', 'items' => array( 'type' => 'string' ) ),
+						'tags'       => array( 'type' => 'array', 'items' => array( 'type' => 'string' ) ),
+						'expected_modified_gmt' => array( 'type' => 'string', 'description' => 'Use the modified_gmt value returned by get_post to prevent overwriting a newer edit.' ),
 					),
 					'required'   => array( 'id' ),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -82,11 +227,12 @@ class Mcp_Tool_Registry {
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => array(
-						'status'   => array( 'type' => 'string' ),
+						'status'   => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'publish', 'private', 'any' ) ),
 						'search'   => array( 'type' => 'string' ),
-						'per_page' => array( 'type' => 'integer' ),
-						'page'     => array( 'type' => 'integer' ),
+						'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_PER_PAGE ),
+						'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
 					),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -95,8 +241,9 @@ class Mcp_Tool_Registry {
 				'description' => 'Get a single page by ID.',
 				'inputSchema' => array(
 					'type'       => 'object',
-					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'properties' => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
 					'required'   => array( 'id' ),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -108,10 +255,12 @@ class Mcp_Tool_Registry {
 					'properties' => array(
 						'title'      => array( 'type' => 'string' ),
 						'content'    => array( 'type' => 'string' ),
-						'status'     => array( 'type' => 'string' ),
-						'parent_id'  => array( 'type' => 'integer' ),
+						'status'     => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'publish', 'private' ) ),
+						'parent_id'  => array( 'type' => 'integer', 'minimum' => 0 ),
+						'slug'       => array( 'type' => 'string' ),
 					),
 					'required'   => array( 'title', 'content' ),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false ),
 			),
@@ -121,12 +270,16 @@ class Mcp_Tool_Registry {
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => array(
-						'id'      => array( 'type' => 'integer' ),
+						'id'      => array( 'type' => 'integer', 'minimum' => 1 ),
 						'title'   => array( 'type' => 'string' ),
 						'content' => array( 'type' => 'string' ),
-						'status'  => array( 'type' => 'string' ),
+						'status'  => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'publish', 'private' ) ),
+						'parent_id' => array( 'type' => 'integer', 'minimum' => 0 ),
+						'slug'      => array( 'type' => 'string' ),
+						'expected_modified_gmt' => array( 'type' => 'string', 'description' => 'Use the modified_gmt value returned by get_page to prevent overwriting a newer edit.' ),
 					),
 					'required'   => array( 'id' ),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -136,11 +289,12 @@ class Mcp_Tool_Registry {
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => array(
-						'post_id'  => array( 'type' => 'integer' ),
-						'status'   => array( 'type' => 'string', 'description' => 'all|approve|hold|spam|trash' ),
-						'per_page' => array( 'type' => 'integer' ),
-						'page'     => array( 'type' => 'integer' ),
+						'post_id'  => array( 'type' => 'integer', 'minimum' => 1 ),
+						'status'   => array( 'type' => 'string', 'enum' => array( 'all', 'approve', 'hold', 'spam', 'trash' ) ),
+						'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_PER_PAGE ),
+						'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
 					),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -149,8 +303,9 @@ class Mcp_Tool_Registry {
 				'description' => 'Get a single comment by ID.',
 				'inputSchema' => array(
 					'type'       => 'object',
-					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'properties' => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
 					'required'   => array( 'id' ),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -160,10 +315,11 @@ class Mcp_Tool_Registry {
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => array(
-						'id'     => array( 'type' => 'integer' ),
-						'action' => array( 'type' => 'string', 'description' => 'approve|spam|trash|unapprove' ),
+						'id'     => array( 'type' => 'integer', 'minimum' => 1 ),
+						'action' => array( 'type' => 'string', 'enum' => array( 'approve', 'spam', 'trash', 'unapprove' ) ),
 					),
 					'required'   => array( 'id', 'action' ),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true ),
 			),
@@ -175,9 +331,10 @@ class Mcp_Tool_Registry {
 					'properties' => array(
 						'role'     => array( 'type' => 'string' ),
 						'search'   => array( 'type' => 'string' ),
-						'per_page' => array( 'type' => 'integer' ),
-						'page'     => array( 'type' => 'integer' ),
+						'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_PER_PAGE ),
+						'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
 					),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -186,8 +343,9 @@ class Mcp_Tool_Registry {
 				'description' => 'Get a single user by ID (no email address).',
 				'inputSchema' => array(
 					'type'       => 'object',
-					'properties' => array( 'id' => array( 'type' => 'integer' ) ),
+					'properties' => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
 					'required'   => array( 'id' ),
+					'additionalProperties' => false,
 				),
 				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
@@ -225,6 +383,10 @@ class Mcp_Tool_Registry {
 		}
 
 		$args = is_array( $args ) ? $args : array();
+		$validation = rest_validate_value_from_schema( $args, $defs[ $name ]['inputSchema'], 'arguments' );
+		if ( is_wp_error( $validation ) ) {
+			return new WP_Error( 'mcp_invalid_params', $validation->get_error_message() );
+		}
 
 		try {
 			return call_user_func( $defs[ $name ]['handler'], $args );

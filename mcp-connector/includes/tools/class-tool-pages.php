@@ -26,6 +26,9 @@ class Mcp_Tool_Pages {
 			'orderby'        => 'title',
 			'order'          => 'ASC',
 		);
+		if ( 'publish' !== $status && ! current_user_can( 'edit_others_pages' ) ) {
+			$query_args['author'] = get_current_user_id();
+		}
 
 		if ( ! empty( $args['search'] ) ) {
 			$query_args['s'] = sanitize_text_field( $args['search'] );
@@ -66,8 +69,11 @@ class Mcp_Tool_Pages {
 		}
 
 		$status = self::sanitize_status( $args['status'] ?? 'draft' );
+		if ( ! $status ) {
+			return new WP_Error( 'mcp_invalid_param', 'status must be one of: ' . implode( ', ', self::ALLOWED_STATUSES ) );
+		}
 
-		if ( 'publish' === $status && ! current_user_can( 'publish_pages' ) ) {
+		if ( in_array( $status, array( 'publish', 'private' ), true ) && ! current_user_can( 'publish_pages' ) ) {
 			return new WP_Error( 'mcp_forbidden', 'You do not have permission to publish pages.' );
 		}
 
@@ -78,8 +84,15 @@ class Mcp_Tool_Pages {
 			'post_type'    => 'page',
 			'post_author'  => get_current_user_id(),
 		);
+		if ( isset( $args['slug'] ) ) {
+			$postarr['post_name'] = sanitize_title( $args['slug'] );
+		}
 
 		if ( ! empty( $args['parent_id'] ) ) {
+			$parent = get_post( absint( $args['parent_id'] ) );
+			if ( ! $parent || 'page' !== $parent->post_type || ! current_user_can( 'read_post', $parent->ID ) ) {
+				return new WP_Error( 'mcp_invalid_parent', 'parent_id must identify a page you can read.' );
+			}
 			$postarr['post_parent'] = absint( $args['parent_id'] );
 		}
 
@@ -107,6 +120,9 @@ class Mcp_Tool_Pages {
 		if ( ! current_user_can( 'edit_page', $page_id ) ) {
 			return new WP_Error( 'mcp_forbidden', 'You do not have permission to edit this page.' );
 		}
+		if ( isset( $args['expected_modified_gmt'] ) && $args['expected_modified_gmt'] !== $page->post_modified_gmt ) {
+			return new WP_Error( 'mcp_edit_conflict', 'The page changed after it was read. Fetch it again before updating.' );
+		}
 
 		$postarr = array( 'ID' => $page_id );
 
@@ -116,9 +132,25 @@ class Mcp_Tool_Pages {
 		if ( isset( $args['content'] ) ) {
 			$postarr['post_content'] = wp_kses_post( $args['content'] );
 		}
+		if ( isset( $args['slug'] ) ) {
+			$postarr['post_name'] = sanitize_title( $args['slug'] );
+		}
+		if ( isset( $args['parent_id'] ) ) {
+			$parent_id = absint( $args['parent_id'] );
+			if ( $parent_id ) {
+				$parent = get_post( $parent_id );
+				if ( ! $parent || 'page' !== $parent->post_type || $parent_id === $page_id || in_array( $page_id, get_post_ancestors( $parent ), true ) || ! current_user_can( 'read_post', $parent_id ) ) {
+					return new WP_Error( 'mcp_invalid_parent', 'parent_id must identify another page you can read.' );
+				}
+			}
+			$postarr['post_parent'] = $parent_id;
+		}
 		if ( isset( $args['status'] ) ) {
 			$status = self::sanitize_status( $args['status'] );
-			if ( 'publish' === $status && ! current_user_can( 'publish_pages' ) ) {
+			if ( ! $status ) {
+				return new WP_Error( 'mcp_invalid_param', 'status must be one of: ' . implode( ', ', self::ALLOWED_STATUSES ) );
+			}
+			if ( in_array( $status, array( 'publish', 'private' ), true ) && ! current_user_can( 'publish_pages' ) ) {
 				return new WP_Error( 'mcp_forbidden', 'You do not have permission to publish pages.' );
 			}
 			$postarr['post_status'] = $status;
@@ -135,18 +167,20 @@ class Mcp_Tool_Pages {
 
 	private static function sanitize_status( $status ) {
 		$status = sanitize_key( $status );
-		return in_array( $status, self::ALLOWED_STATUSES, true ) ? $status : 'draft';
+		return in_array( $status, self::ALLOWED_STATUSES, true ) ? $status : null;
 	}
 
 	private static function format_page( $page, $with_content = false ) {
 		$data = array(
-			'id'        => $page->ID,
-			'title'     => get_the_title( $page ),
-			'status'    => $page->post_status,
-			'author_id' => (int) $page->post_author,
-			'parent_id' => (int) $page->post_parent,
-			'date'      => $page->post_date_gmt,
-			'link'      => get_permalink( $page ),
+			'id'           => $page->ID,
+			'title'        => get_the_title( $page ),
+			'slug'         => $page->post_name,
+			'status'       => $page->post_status,
+			'author_id'    => (int) $page->post_author,
+			'parent_id'    => (int) $page->post_parent,
+			'date'         => $page->post_date_gmt,
+			'modified_gmt' => $page->post_modified_gmt,
+			'link'         => get_permalink( $page ),
 		);
 
 		if ( $with_content ) {

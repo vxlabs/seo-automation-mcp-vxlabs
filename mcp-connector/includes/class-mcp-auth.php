@@ -29,7 +29,16 @@ class Mcp_Auth {
 		return self::$cached_result;
 	}
 
+	public static function check_origin( WP_REST_Request $request ) {
+		return self::validate_origin( $request );
+	}
+
 	private static function do_check_request( WP_REST_Request $request ) {
+		$origin_check = self::validate_origin( $request );
+		if ( is_wp_error( $origin_check ) ) {
+			return $origin_check;
+		}
+
 		$ip = Mcp_Logger::get_client_ip();
 
 		if ( Mcp_Rate_Limiter::is_limited( $ip ) ) {
@@ -90,5 +99,25 @@ class Mcp_Auth {
 		// Deliberately generic — does not distinguish "missing", "unknown", or
 		// "revoked" so a caller can't enumerate valid key prefixes by response shape.
 		return new WP_Error( 'mcp_invalid_key', 'Invalid API key.', array( 'status' => 401 ) );
+	}
+
+	private static function validate_origin( WP_REST_Request $request ) {
+		$origin = $request->get_header( 'origin' );
+		if ( ! $origin ) {
+			return true;
+		}
+
+		$home_parts = wp_parse_url( home_url( '/' ) );
+		$home_origin = isset( $home_parts['scheme'], $home_parts['host'] ) ? $home_parts['scheme'] . '://' . $home_parts['host'] : '';
+		if ( isset( $home_parts['port'] ) ) {
+			$home_origin .= ':' . $home_parts['port'];
+		}
+
+		$allowed = (array) apply_filters( 'mcp_connector_allowed_origins', array_filter( array( $home_origin ) ) );
+		if ( ! in_array( untrailingslashit( $origin ), array_map( 'untrailingslashit', $allowed ), true ) ) {
+			return new WP_Error( 'mcp_invalid_origin', 'Origin is not allowed.', array( 'status' => 403 ) );
+		}
+
+		return true;
 	}
 }

@@ -8,8 +8,9 @@
 		}, data ) );
 	}
 
-	function showRevealModal( fullKey, connectorUrl ) {
+	function showRevealModal( fullKey, endpointUrl, connectorUrl ) {
 		$( '#mcp-revealed-key' ).val( fullKey );
+		$( '#mcp-revealed-endpoint' ).val( endpointUrl );
 		$( '#mcp-revealed-url' ).val( connectorUrl );
 		$( '#mcp-reveal-modal' ).show();
 	}
@@ -34,7 +35,7 @@
 		postAjax( 'mcp_generate_key', { label: label, user_id: userId } )
 			.done( function ( response ) {
 				if ( response.success ) {
-					showRevealModal( response.data.full_key, response.data.connector_url );
+					showRevealModal( response.data.full_key, response.data.endpoint_url, response.data.connector_url );
 				} else {
 					window.alert( response.data && response.data.message ? response.data.message : 'Failed to generate key.' );
 				}
@@ -89,6 +90,10 @@
 
 	$( document ).on( 'click', '#mcp-copy-url', function () {
 		copyField( $( '#mcp-revealed-url' ) );
+	} );
+
+	$( document ).on( 'click', '#mcp-copy-endpoint', function () {
+		copyField( $( '#mcp-revealed-endpoint' ) );
 	} );
 
 	$( document ).on( 'click', '#mcp-close-modal', function () {

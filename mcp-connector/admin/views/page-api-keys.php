@@ -8,7 +8,10 @@ $list_table->prepare_items();
 ?>
 <div class="wrap mcp-connector-wrap">
 	<h1>MCP Connector</h1>
-	<p>Generate API keys to let Claude (or any MCP-compatible client) manage posts, pages, comments, and users on this site.</p>
+	<p>Generate API keys to let Claude (or another MCP-compatible client) use the site's content and SEO tools. Configure the source material first under <a href="<?php echo esc_url( admin_url( 'admin.php?page=mcp-business-context' ) ); ?>">Business Context</a>.</p>
+	<div class="notice notice-warning inline">
+		<p><strong>API-key URLs are a legacy compatibility mode.</strong> Prefer the <code>Authorization: Bearer</code> header whenever your MCP client supports custom headers. Query-string credentials may be recorded in server or proxy logs.</p>
+	</div>
 
 	<?php if ( ! $site_is_https ) : ?>
 		<div class="notice notice-error">
@@ -25,7 +28,7 @@ $list_table->prepare_items();
 		<div class="notice notice-warning">
 			<p>
 				Permalinks are currently set to "Plain." The connector still works via the URL below, but for the
-				clean <code>/mcp?api-key=...</code> form, switch to a non-Plain structure under
+				clean <code>/mcp</code> form, switch to a non-Plain structure under
 				<a href="<?php echo esc_url( admin_url( 'options-permalink.php' ) ); ?>">Settings &rarr; Permalinks</a>.
 			</p>
 		</div>
@@ -67,9 +70,12 @@ $list_table->prepare_items();
 		<h2>Your new API key</h2>
 		<p class="mcp-warning">This key will not be shown again. Copy it now and store it somewhere safe.</p>
 		<label>API key</label>
-		<input type="text" id="mcp-revealed-key" class="regular-text" readonly />
-		<button type="button" class="button" id="mcp-copy-key">Copy</button>
-		<label>Connector URL (paste this into Claude)</label>
+			<input type="text" id="mcp-revealed-key" class="regular-text" readonly />
+			<button type="button" class="button" id="mcp-copy-key">Copy</button>
+			<label>Recommended endpoint URL (use with Authorization header)</label>
+			<input type="text" id="mcp-revealed-endpoint" class="regular-text" readonly />
+			<button type="button" class="button" id="mcp-copy-endpoint">Copy</button>
+			<label>Legacy connector URL (query-string credential)</label>
 		<input type="text" id="mcp-revealed-url" class="regular-text" readonly />
 		<button type="button" class="button" id="mcp-copy-url">Copy</button>
 		<p>

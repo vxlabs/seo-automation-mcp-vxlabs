@@ -6,8 +6,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Mcp_Jsonrpc_Server {
 
 	const PROTOCOL_VERSION = '2025-06-18';
+	const LEGACY_PROTOCOL_VERSION = '2025-03-26';
 
 	public static function handle( WP_REST_Request $request ) {
+		$accept = $request->get_header( 'accept' );
+		if ( $accept && false === stripos( $accept, 'application/json' ) && false === stripos( $accept, '*/*' ) ) {
+			return self::http_error_response( 'This server returns application/json responses.', 406 );
+		}
+
 		$body = json_decode( $request->get_body(), true );
 
 		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $body ) ) {
@@ -29,11 +35,16 @@ class Mcp_Jsonrpc_Server {
 		$method  = $body['method'];
 		$params  = isset( $body['params'] ) && is_array( $body['params'] ) ? $body['params'] : array();
 		$key_row = $request->get_param( '_mcp_key_row' );
+		$protocol_header = $request->get_header( 'mcp-protocol-version' );
+
+		if ( 'initialize' !== $method && $protocol_header && ! in_array( $protocol_header, array( self::PROTOCOL_VERSION, self::LEGACY_PROTOCOL_VERSION ), true ) ) {
+			return self::http_error_response( 'Unsupported MCP-Protocol-Version header.', 400 );
+		}
 
 		try {
 			switch ( $method ) {
 				case 'initialize':
-					$result = self::handle_initialize();
+					$result = self::handle_initialize( $params );
 					break;
 
 				case 'notifications/initialized':
@@ -66,9 +77,12 @@ class Mcp_Jsonrpc_Server {
 		return self::success_response( $id, $result );
 	}
 
-	private static function handle_initialize() {
+	private static function handle_initialize( $params ) {
+		$requested = isset( $params['protocolVersion'] ) && is_string( $params['protocolVersion'] ) ? $params['protocolVersion'] : '';
+		$negotiated = in_array( $requested, array( self::PROTOCOL_VERSION, self::LEGACY_PROTOCOL_VERSION ), true ) ? $requested : self::PROTOCOL_VERSION;
+
 		return array(
-			'protocolVersion' => self::PROTOCOL_VERSION,
+			'protocolVersion' => $negotiated,
 			'serverInfo'      => array(
 				'name'    => 'WordPress MCP Connector',
 				'version' => MCP_CONNECTOR_VERSION,
@@ -124,6 +138,7 @@ class Mcp_Jsonrpc_Server {
 					'text' => wp_json_encode( $tool_result ),
 				),
 			),
+			'structuredContent' => is_array( $tool_result ) ? $tool_result : array( 'value' => $tool_result ),
 			'isError' => false,
 		);
 	}
@@ -160,6 +175,15 @@ class Mcp_Jsonrpc_Server {
 					),
 				),
 				200
+			)
+		);
+	}
+
+	private static function http_error_response( $message, $status ) {
+		return self::no_store(
+			new WP_REST_Response(
+				array( 'code' => 'mcp_bad_protocol_version', 'message' => $message ),
+				$status
 			)
 		);
 	}

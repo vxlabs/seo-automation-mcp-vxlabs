@@ -24,7 +24,7 @@ class Mcp_Rest_Controller {
 				array(
 					'methods'             => WP_REST_Server::READABLE, // GET
 					'callback'            => array( __CLASS__, 'method_not_allowed' ),
-					'permission_callback' => '__return_true',
+					'permission_callback' => array( 'Mcp_Auth', 'check_origin' ),
 				),
 			)
 		);

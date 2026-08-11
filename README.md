@@ -4,7 +4,7 @@
 
 MCP Connector turns any WordPress install into a remote [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server, so an AI client like Claude can manage your posts, pages, comments, and users through API-key-authenticated tool calls — with no separate backend, no cloud dependency, and no data leaving your server unless you point a client at it.
 
-- **Version:** 1.0.0
+- **Version:** 1.1.0
 - **Requires:** WordPress 6.5+, PHP 7.4+
 - **License:** GPL-2.0-or-later
 
@@ -64,7 +64,7 @@ Because authorization defers to WordPress itself, there is no parallel permissio
 
 ## What Claude can do
 
-Ten tools across four areas. Each is gated by a genuine WordPress capability:
+Twenty-three tools across business context, content, SEO, media, comments, and users. Each is gated by a genuine WordPress capability:
 
 | Tool | Kind | What it does | Requires |
 |---|---|---|---|
@@ -75,6 +75,13 @@ Ten tools across four areas. Each is gated by a genuine WordPress capability:
 | `list_comments` / `get_comment` | Read | Read comments | `moderate_comments` to see non-approved |
 | `moderate_comment` | Write | Approve, spam, trash or unapprove | `moderate_comments` |
 | `list_users` / `get_user` | Read | Read users (email addresses are never returned) | `list_users` |
+| `get_business_context` | Read | Read business facts and editorial/SEO guidance | Content editing capability |
+| `update_business_context` | Write | Update selected context fields with revision history | `manage_options` |
+| `get_seo_metadata` / `audit_content_seo` | Read | Inspect metadata, JSON-LD, and deterministic content checks | Read the content |
+| `update_seo_metadata` | Write | Set title, description, canonical, robots, focus topic, and JSON-LD | Edit the content |
+| `list_content_revisions` / `get_content_revision` | Read | Inspect WordPress revisions before or after an edit | Read the content |
+| `list_media` / `get_media` | Read | Inspect media and image alt text | Read the attachment |
+| `update_media_alt_text` | Write | Update image alt text | Edit the attachment |
 
 If the bound user lacks the required capability, the call is refused — the same way WordPress would refuse that user in the admin dashboard.
 
@@ -116,53 +123,57 @@ Go to **Users → Add New** and create an account just for the connector. Give i
 
 > **Why this matters:** every action a key performs is authorized against this user's real capabilities. Bind a key to this Editor account and, even if the key leaks, it can only manage content — never install plugins, change settings, or take over your site. Avoid binding keys to an Administrator.
 
-### 2. Serve your site over HTTPS
+### 2. Fill in Business Context
+
+Open **MCP Connector → Business Context** and provide the public business facts, audience, positioning, brand voice, approved claims, restricted claims, priority topics, and internal URLs Claude should use. This information is private in WordPress but is returned to authorized MCP clients, so do not enter secrets.
+
+The context is stored as a private WordPress record with revision history. Only an Administrator can change it through MCP; content editors can read it for writing work.
+
+### 3. Serve your site over HTTPS
 
 API keys travel in the request URL or an `Authorization` header. Over plain HTTP those can be seen by anyone watching the network (and, for the query-string form, may be written into server/proxy logs). The connector's admin page will warn you if the site isn't on HTTPS. **Don't use this in production without a valid TLS certificate.**
 
-### 3. (Recommended) Set clean permalinks
+### 4. (Recommended) Set clean permalinks
 
-Go to **Settings → Permalinks** and choose any non-**Plain** structure (e.g. **Post name**). This enables the tidy `https://your-site/mcp?api-key=...` endpoint.
+Go to **Settings → Permalinks** and choose any non-**Plain** structure (e.g. **Post name**). This enables the tidy `https://your-site/mcp` endpoint.
 
-If you leave permalinks on **Plain**, everything still works — you'll just use the `?rest_route=/mcp-connector/v1/mcp&api-key=...` form of the URL instead. The plugin generates the correct URL for you either way.
+If you leave permalinks on **Plain**, everything still works — you'll use `?rest_route=/mcp-connector/v1/mcp` instead. The plugin generates the correct endpoint either way.
 
-### 4. Generate an API key
+### 5. Generate an API key
 
 1. Go to **MCP Connector → API Keys**.
 2. Give the key a **Label** (e.g. *Claude Code – laptop*) so you can recognize it later.
 3. Under **Acts as**, pick the dedicated user you created in step 1.
 4. Click **Generate New Key**.
 
-The full key **and** a ready-to-paste connector URL are shown **exactly once**, in a popup. Copy them immediately and store them somewhere safe — only a hashed version is kept, so neither can be retrieved again. If you lose it, just generate a new one and revoke the old.
+The full key and a legacy connector URL are shown **exactly once**. Copy the key immediately; only a hash is stored. Prefer sending the key using an `Authorization: Bearer` header. The query-string URL is retained for clients that cannot configure headers, but URLs may be recorded in server and proxy logs.
 
 ---
 
 ## Connecting a client
 
-You'll paste the connector URL (or key) into whichever MCP client you use. The URL looks like:
+The base endpoint contains no credential:
 
 ```
-https://your-site/mcp?api-key=<your-key>
+https://your-site/mcp
 ```
 
 ### Claude Code (command line)
 
 ```bash
-claude mcp add --transport http my-site "https://your-site/mcp?api-key=<your-key>"
+claude mcp add --transport http my-site "https://your-site/mcp" \
+  --header "Authorization: Bearer <your-key>"
 ```
 
 Then, inside Claude Code, ask it to use your site — e.g. *"list my latest 5 draft posts on my-site."*
 
 ### Claude Desktop
 
-Add an entry to your Claude Desktop MCP configuration pointing at the same HTTP endpoint, using the connector URL as the server URL. Restart Claude Desktop and the WordPress tools will appear.
+Add the same remote HTTP endpoint to Claude Desktop and configure `Authorization: Bearer <your-key>` as a request header. Restart Claude Desktop and the WordPress tools will appear.
 
 ### claude.ai (custom connector)
 
-claude.ai runs in Anthropic's cloud, so it needs a **publicly reachable HTTPS URL** — it cannot reach `localhost` or a private IP.
-
-- **Live site:** paste your `https://your-site/mcp?api-key=<key>` URL into a custom connector.
-- **Local site:** expose it first with a tunnel, e.g. `ngrok http 443`, and use the tunnel's HTTPS URL.
+The current API-key release is not yet suitable for a production claude.ai custom connector because it does not implement the OAuth discovery and consent flow expected by hosted connectors. Use Claude Code or another client that can send a custom Authorization header. OAuth is the next transport milestone.
 
 ---
 
@@ -172,8 +183,16 @@ There are two equivalent ways to present the key — use whichever your client s
 
 | Method | Form | When to use |
 |---|---|---|
-| Query string | `?api-key=<key>` | Clients that only offer a single URL field |
-| Header | `Authorization: Bearer <key>` | **Preferred** where supported — keeps the key out of URL-based logs |
+| Header | `Authorization: Bearer <key>` | **Preferred** — keeps the key out of URL-based logs |
+| Query string | `?api-key=<key>` | Legacy compatibility only |
+
+> Production Claude custom connectors should use an OAuth-based authorization flow. API keys are currently intended primarily for controlled, single-owner installations and development.
+
+## SEO ownership and plugin compatibility
+
+When no supported SEO plugin is detected, MCP Connector can output its own title, description, canonical, robots directives, per-page JSON-LD, and homepage Organization JSON-LD. It does not output a meta-keywords tag.
+
+When Yoast SEO, Rank Math, or AIOSEO is active, connector-native frontend output and SEO writes are disabled to prevent duplicate or contradictory markup. Reading and content-level audits still work. Provider-specific write adapters are planned for a later release.
 
 Keys are stored only as a SHA-256 hash. The plaintext is shown once at generation time and can never be recovered afterward. **Revoking a key takes effect immediately.**
 
@@ -229,7 +248,7 @@ Yes. It uses WordPress's standard database layer and requires no special PHP ext
 ## Troubleshooting
 
 **The `/mcp` URL returns a 404.**
-Permalinks are probably set to **Plain**, or rewrite rules need flushing. Either switch to a non-Plain permalink structure under **Settings → Permalinks** (visiting that page re-saves and flushes rules), or use the `?rest_route=/mcp-connector/v1/mcp&api-key=...` form instead.
+Permalinks are probably set to **Plain**, or rewrite rules need flushing. Either switch to a non-Plain permalink structure under **Settings → Permalinks** (visiting that page re-saves and flushes rules), or use the `?rest_route=/mcp-connector/v1/mcp` endpoint and send the key in the Authorization header.
 
 **I get a 401 / authentication error.**
 Double-check the key is correct and hasn't been revoked, and that you copied the whole thing. Remember the plaintext is only shown once — if unsure, generate a fresh key.
