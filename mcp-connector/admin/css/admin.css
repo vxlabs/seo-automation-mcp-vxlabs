@@ -1,0 +1,153 @@
+.mcp-connector-wrap .postbox {
+	max-width: 760px;
+	margin-top: 1.5em;
+}
+
+.mcp-connector-wrap .postbox .inside {
+	margin-top: 0;
+}
+
+.mcp-connector-wrap .CodeMirror {
+	border: 1px solid #8c8f94;
+	height: auto;
+	min-height: 160px;
+}
+
+.mcp-badge-active {
+	color: #0a7d2c;
+	font-weight: 600;
+}
+
+.mcp-badge-revoked {
+	color: #8a8a8a;
+}
+
+.mcp-badge-warning {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.mcp-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.5);
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.mcp-modal-content {
+	background: #fff;
+	padding: 2em;
+	max-width: 560px;
+	width: 90%;
+	border-radius: 4px;
+}
+
+.mcp-modal-content label {
+	display: block;
+	margin-top: 1em;
+	font-weight: 600;
+}
+
+.mcp-modal-content input[type='text'] {
+	width: 80%;
+}
+
+.mcp-modal-content textarea {
+	width: 80%;
+	display: block;
+}
+
+.mcp-seo-edit-robots {
+	margin-top: 1em;
+}
+
+.mcp-seo-edit-robots label {
+	display: inline-block;
+	margin: 0 1.5em 0 0;
+	font-weight: normal;
+}
+
+.mcp-seo-count-over {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.mcp-warning {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.mcp-seo-subtabs {
+	margin: 1em 0 1.5em;
+}
+
+.mcp-seo-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.mcp-seo-badge-set {
+	background: #d4edda;
+	color: #155724;
+}
+
+.mcp-seo-badge-missing {
+	background: #f8d7da;
+	color: #721c24;
+}
+
+.mcp-seo-badge-too-long {
+	background: #fff3cd;
+	color: #856404;
+}
+
+.mcp-seo-detail-row > td {
+	background: #f6f7f7;
+	padding: 1em 2em;
+}
+
+.mcp-seo-detail-panel h4 {
+	margin: 1em 0 0.5em;
+}
+
+.mcp-seo-detail-panel h4:first-child {
+	margin-top: 0;
+}
+
+.mcp-seo-audit-stats,
+.mcp-seo-og-preview {
+	list-style: disc;
+	margin-left: 1.5em;
+}
+
+.mcp-seo-issue-list {
+	list-style: disc;
+	margin-left: 1.5em;
+}
+
+.mcp-seo-issue-warning {
+	color: #856404;
+}
+
+.mcp-seo-flag {
+	color: #b32d2e;
+}
+
+.mcp-seo-jsonld {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	padding: 1em;
+	max-width: 100%;
+	overflow-x: auto;
+}

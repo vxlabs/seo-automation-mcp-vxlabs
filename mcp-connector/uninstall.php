@@ -21,4 +21,8 @@ foreach ( $seo_meta_keys as $meta_key ) {
 }
 
 delete_option( 'mcp_connector_flush_rewrites' );
+delete_option( 'mcp_connector_rewrite_version' );
 delete_option( 'mcp_business_context_post_id' );
+delete_option( 'mcp_seo_robots_txt' );
+delete_option( 'mcp_seo_llms_txt' );
+delete_option( 'mcp_seo_jsonld' );

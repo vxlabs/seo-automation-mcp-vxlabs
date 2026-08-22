@@ -18,9 +18,23 @@ class Mcp_Seo_Service {
 	const META_ROBOTS      = '_mcp_seo_robots';
 	const META_SCHEMA      = '_mcp_seo_schema';
 	const META_FOCUS_TOPIC = '_mcp_seo_focus_topic';
+	const META_KEYWORDS    = '_mcp_seo_keywords';
+
+	/**
+	 * Public, non-attachment post types the SEO service manages. Always
+	 * includes 'post' and 'page'; also picks up any public CPT registered
+	 * by a theme or plugin (e.g. Portfolio, Products).
+	 *
+	 * @return array post_type slug => WP_Post_Type
+	 */
+	public static function managed_post_types() {
+		$types = get_post_types( array( 'public' => true ), 'objects' );
+		unset( $types['attachment'] );
+		return $types;
+	}
 
 	public static function register() {
-		foreach ( array( 'post', 'page' ) as $post_type ) {
+		foreach ( array_keys( self::managed_post_types() ) as $post_type ) {
 			foreach ( self::meta_definitions() as $key => $definition ) {
 				register_post_meta(
 					$post_type,
@@ -66,7 +80,7 @@ class Mcp_Seo_Service {
 	/** @return array|WP_Error */
 	public static function get_for_post( $post_id ) {
 		$post = get_post( absint( $post_id ) );
-		if ( ! $post || ! in_array( $post->post_type, array( 'post', 'page' ), true ) ) {
+		if ( ! $post || ! in_array( $post->post_type, array_keys( self::managed_post_types() ), true ) ) {
 			return new WP_Error( 'mcp_not_found', 'Post or page not found.' );
 		}
 
@@ -84,6 +98,7 @@ class Mcp_Seo_Service {
 			'canonical_url'         => (string) get_post_meta( $post->ID, self::META_CANONICAL, true ),
 			'robots'                => self::decode_robots( get_post_meta( $post->ID, self::META_ROBOTS, true ) ),
 			'focus_topic'           => (string) get_post_meta( $post->ID, self::META_FOCUS_TOPIC, true ),
+			'keywords'              => (string) get_post_meta( $post->ID, self::META_KEYWORDS, true ),
 			'schema'                => is_array( $schema ) ? $schema : null,
 			'warning'               => self::native_output_enabled() ? null : 'A supported SEO plugin is active. Connector-native markup is suppressed to prevent duplicates.',
 		);
@@ -92,7 +107,7 @@ class Mcp_Seo_Service {
 	/** @return array|WP_Error */
 	public static function update_for_post( $post_id, $values ) {
 		$post = get_post( absint( $post_id ) );
-		if ( ! $post || ! in_array( $post->post_type, array( 'post', 'page' ), true ) ) {
+		if ( ! $post || ! in_array( $post->post_type, array_keys( self::managed_post_types() ), true ) ) {
 			return new WP_Error( 'mcp_not_found', 'Post or page not found.' );
 		}
 		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
@@ -110,6 +125,7 @@ class Mcp_Seo_Service {
 			'description'   => self::META_DESCRIPTION,
 			'canonical_url' => self::META_CANONICAL,
 			'focus_topic'   => self::META_FOCUS_TOPIC,
+			'keywords'      => self::META_KEYWORDS,
 		);
 
 		foreach ( $map as $input_key => $meta_key ) {
@@ -139,7 +155,7 @@ class Mcp_Seo_Service {
 	/** @return array|WP_Error */
 	public static function audit_post( $post_id ) {
 		$post = get_post( absint( $post_id ) );
-		if ( ! $post || ! in_array( $post->post_type, array( 'post', 'page' ), true ) ) {
+		if ( ! $post || ! in_array( $post->post_type, array_keys( self::managed_post_types() ), true ) ) {
 			return new WP_Error( 'mcp_not_found', 'Post or page not found.' );
 		}
 		if ( ! current_user_can( 'read_post', $post->ID ) ) {
@@ -185,7 +201,7 @@ class Mcp_Seo_Service {
 	}
 
 	public static function filter_document_title( $title ) {
-		if ( ! self::native_output_enabled() || ! is_singular( array( 'post', 'page' ) ) ) {
+		if ( ! self::native_output_enabled() || ! is_singular( array_keys( self::managed_post_types() ) ) ) {
 			return $title;
 		}
 		$custom = get_post_meta( get_queried_object_id(), self::META_TITLE, true );
@@ -193,7 +209,7 @@ class Mcp_Seo_Service {
 	}
 
 	public static function filter_robots( $robots ) {
-		if ( ! self::native_output_enabled() || ! is_singular( array( 'post', 'page' ) ) ) {
+		if ( ! self::native_output_enabled() || ! is_singular( array_keys( self::managed_post_types() ) ) ) {
 			return $robots;
 		}
 		$custom = self::decode_robots( get_post_meta( get_queried_object_id(), self::META_ROBOTS, true ) );
@@ -204,7 +220,7 @@ class Mcp_Seo_Service {
 	}
 
 	public static function maybe_disable_core_canonical() {
-		if ( ! self::native_output_enabled() || ! is_singular( array( 'post', 'page' ) ) ) {
+		if ( ! self::native_output_enabled() || ! is_singular( array_keys( self::managed_post_types() ) ) ) {
 			return;
 		}
 		if ( get_post_meta( get_queried_object_id(), self::META_CANONICAL, true ) ) {
@@ -217,14 +233,18 @@ class Mcp_Seo_Service {
 			return;
 		}
 
-		if ( is_singular( array( 'post', 'page' ) ) ) {
+		$sitewide_jsonld = Mcp_Technical_Seo::get_jsonld_decoded();
+		if ( $sitewide_jsonld ) {
+			self::print_schema( $sitewide_jsonld );
+		}
+
+		if ( is_singular( array_keys( self::managed_post_types() ) ) ) {
 			$post_id     = get_queried_object_id();
 			$title       = get_post_meta( $post_id, self::META_TITLE, true );
 			$description = get_post_meta( $post_id, self::META_DESCRIPTION, true );
 			$canonical   = get_post_meta( $post_id, self::META_CANONICAL, true );
 			$schema      = get_post_meta( $post_id, self::META_SCHEMA, true );
 			$share_url   = $canonical ? $canonical : get_permalink( $post_id );
-			$image_url   = get_the_post_thumbnail_url( $post_id, 'full' );
 
 			if ( $description ) {
 				echo '<meta name="description" content="' . esc_attr( $description ) . '" />' . "\n";
@@ -242,82 +262,8 @@ class Mcp_Seo_Service {
 			if ( $description ) {
 				echo '<meta property="og:description" content="' . esc_attr( $description ) . '" />' . "\n";
 			}
-			if ( $image_url ) {
-				echo '<meta property="og:image" content="' . esc_url( $image_url ) . '" />' . "\n";
-				echo '<meta name="twitter:card" content="summary_large_image" />' . "\n";
-			} else {
-				echo '<meta name="twitter:card" content="summary" />' . "\n";
-			}
+			echo '<meta name="twitter:card" content="summary" />' . "\n";
 		}
-
-		$front_schema = is_singular() ? get_post_meta( get_queried_object_id(), self::META_SCHEMA, true ) : '';
-		if ( is_front_page() && ! $front_schema ) {
-			$organization = self::build_organization_schema();
-			if ( $organization ) {
-				self::print_schema( $organization );
-			}
-		}
-	}
-
-	public static function build_organization_schema() {
-		$stored = Mcp_Business_Context::get();
-		$ctx    = $stored['context'];
-		if ( empty( $ctx['business_name'] ) ) {
-			return null;
-		}
-
-		$type = preg_match( '/^[A-Za-z][A-Za-z0-9]*$/', $ctx['organization_type'] ) ? $ctx['organization_type'] : 'Organization';
-		$url  = $ctx['website_url'] ? $ctx['website_url'] : home_url( '/' );
-		$data = array(
-			'@context' => 'https://schema.org',
-			'@type'    => $type,
-			'@id'      => trailingslashit( $url ) . '#organization',
-			'name'     => $ctx['business_name'],
-			'url'      => $url,
-		);
-
-		$optional = array( 'legalName' => 'legal_name', 'description' => 'business_description', 'logo' => 'logo_url', 'foundingDate' => 'founding_date', 'priceRange' => 'price_range' );
-		foreach ( $optional as $schema_key => $context_key ) {
-			if ( ! empty( $ctx[ $context_key ] ) ) {
-				$data[ $schema_key ] = $ctx[ $context_key ];
-			}
-		}
-		if ( ! empty( $ctx['social_profiles'] ) ) {
-			$data['sameAs'] = $ctx['social_profiles'];
-		}
-		if ( ! empty( $ctx['telephone'] ) || ! empty( $ctx['email'] ) ) {
-			$data['contactPoint'] = array_filter(
-				array(
-					'@type'       => 'ContactPoint',
-					'contactType'  => $ctx['contact_type'] ? $ctx['contact_type'] : 'customer service',
-					'telephone'    => $ctx['telephone'],
-					'email'        => $ctx['email'],
-				)
-			);
-		}
-		$address = array_filter(
-			array(
-				'@type'           => 'PostalAddress',
-				'streetAddress'    => $ctx['address'],
-				'addressLocality'  => $ctx['address_locality'],
-				'addressRegion'    => $ctx['address_region'],
-				'postalCode'       => $ctx['postal_code'],
-				'addressCountry'   => strtoupper( $ctx['address_country'] ),
-			)
-		);
-		if ( count( $address ) > 1 ) {
-			$data['address'] = $address;
-		}
-		if ( ! empty( $ctx['service_areas'] ) ) {
-			$data['areaServed'] = $ctx['service_areas'];
-		}
-		if ( ! empty( $ctx['languages'] ) ) {
-			$data['knowsLanguage'] = $ctx['languages'];
-		}
-		if ( ! empty( $ctx['opening_hours'] ) && 'Organization' !== $type ) {
-			$data['openingHours'] = $ctx['opening_hours'];
-		}
-		return $data;
 	}
 
 	private static function meta_definitions() {
@@ -328,6 +274,7 @@ class Mcp_Seo_Service {
 			self::META_ROBOTS      => array( 'sanitize' => 'sanitize_text_field' ),
 			self::META_SCHEMA      => array( 'sanitize' => 'sanitize_text_field' ),
 			self::META_FOCUS_TOPIC => array( 'sanitize' => 'sanitize_text_field' ),
+			self::META_KEYWORDS    => array( 'sanitize' => 'sanitize_text_field' ),
 		);
 	}
 
@@ -342,7 +289,14 @@ class Mcp_Seo_Service {
 		return is_array( $decoded ) ? self::sanitize_robots( $decoded ) : array();
 	}
 
-	private static function normalize_schema( $schema ) {
+	/**
+	 * Validates and deep-sanitizes a Schema.org JSON-LD payload. Shared by
+	 * per-post schema (update_seo_metadata) and the site-wide JSON-LD field
+	 * (Mcp_Technical_Seo) so both paths enforce the same rules.
+	 *
+	 * @return array|WP_Error
+	 */
+	public static function normalize_schema( $schema ) {
 		if ( '' === $schema || null === $schema || array() === $schema ) {
 			return null;
 		}
@@ -389,7 +343,7 @@ class Mcp_Seo_Service {
 		}
 	}
 
-	private static function print_schema( $schema ) {
+	public static function print_schema( $schema ) {
 		if ( ! is_array( $schema ) || ! $schema ) {
 			return;
 		}

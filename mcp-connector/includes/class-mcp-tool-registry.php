@@ -21,7 +21,7 @@ class Mcp_Tool_Registry {
 		self::$tools = array(
 			'get_business_context' => array(
 				'handler'     => array( 'Mcp_Tool_Seo', 'get_business_context' ),
-				'description' => 'Read the site owner\'s business facts, audiences, positioning, editorial guardrails, and SEO priorities before writing or optimizing content.',
+				'description' => 'Read the site owner\'s freeform business context (facts, audiences, positioning, editorial guardrails, SEO priorities) as plain text before writing or optimizing content.',
 				'inputSchema' => array(
 					'type'                 => 'object',
 					'properties'           => array(),
@@ -31,13 +31,13 @@ class Mcp_Tool_Registry {
 			),
 			'update_business_context' => array(
 				'handler'     => array( 'Mcp_Tool_Seo', 'update_business_context' ),
-				'description' => 'Update selected business-context fields. Requires a key bound to an administrator. Omitted fields are preserved.',
+				'description' => 'Replace the site\'s business context with the given freeform text. Requires a key bound to an administrator. This replaces the entire stored text, not selected fields — read get_business_context first if you want to preserve and extend the existing content.',
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => array(
 						'context' => array(
-							'type'                 => 'object',
-							'additionalProperties' => true,
+							'type'        => 'string',
+							'description' => 'The full business context, as plain text.',
 						),
 					),
 					'required'             => array( 'context' ),
@@ -45,9 +45,33 @@ class Mcp_Tool_Registry {
 				),
 				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
+			'get_technical_seo' => array(
+				'handler'     => array( 'Mcp_Tool_Seo', 'get_technical_seo' ),
+				'description' => 'Read the site\'s robots.txt override, llms.txt content, and site-wide JSON-LD, plus warnings about conditions (a physical robots.txt file, "discourage search engines" in Settings → Reading) that would make a saved robots.txt override silently do nothing.',
+				'inputSchema' => array(
+					'type'                 => 'object',
+					'properties'           => array(),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
+			'update_technical_seo' => array(
+				'handler'     => array( 'Mcp_Tool_Seo', 'update_technical_seo' ),
+				'description' => 'Update the site\'s robots.txt override, llms.txt content, and/or site-wide JSON-LD. Requires a key bound to an administrator. Omitted fields are preserved. jsonld must be a Schema.org object containing @type or @graph; pass an empty string to any field to clear it.',
+				'inputSchema' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'robots_txt' => array( 'type' => 'string', 'description' => 'Full robots.txt body. Empty string falls back to the WordPress default.' ),
+						'llms_txt'   => array( 'type' => 'string', 'description' => 'Full llms.txt body (Markdown), served at /llms.txt and /llm.txt. Empty string serves neither.' ),
+						'jsonld'     => array( 'type' => array( 'object', 'string' ), 'description' => 'A Schema.org object containing @type or @graph, printed site-wide in <head>.' ),
+					),
+					'additionalProperties' => false,
+				),
+				'annotations' => array( 'readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true ),
+			),
 			'get_seo_metadata' => array(
 				'handler'     => array( 'Mcp_Tool_Seo', 'get_seo_metadata' ),
-				'description' => 'Get connector-managed SEO metadata, robots directives, provider status, and JSON-LD for a post or page.',
+				'description' => 'Get connector-managed SEO metadata, robots directives, provider status, and JSON-LD for a post, page, or other public content type.',
 				'inputSchema' => array(
 					'type'                 => 'object',
 					'properties'           => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
@@ -58,7 +82,7 @@ class Mcp_Tool_Registry {
 			),
 			'update_seo_metadata' => array(
 				'handler'     => array( 'Mcp_Tool_Seo', 'update_seo_metadata' ),
-				'description' => 'Update SEO title, meta description, canonical URL, robots directives, focus topic, or Schema.org JSON-LD for a post or page. Omitted fields are preserved.',
+				'description' => 'Update SEO title, meta description, keywords, canonical URL, robots directives, focus topic, or Schema.org JSON-LD for a post, page, or other public content type. Omitted fields are preserved.',
 				'inputSchema' => array(
 					'type'       => 'object',
 					'properties' => array(
@@ -67,6 +91,7 @@ class Mcp_Tool_Registry {
 						'description'   => array( 'type' => 'string', 'maxLength' => 500 ),
 						'canonical_url' => array( 'type' => 'string', 'format' => 'uri' ),
 						'focus_topic'   => array( 'type' => 'string', 'maxLength' => 255, 'description' => 'Internal editorial target; this is not emitted as a meta-keywords tag.' ),
+						'keywords'      => array( 'type' => 'string', 'maxLength' => 500, 'description' => 'Comma-separated SEO keywords/phrases. Distinct from focus_topic, which is internal-only.' ),
 						'robots'        => array( 'type' => 'array', 'items' => array( 'type' => 'string', 'enum' => array( 'noindex', 'nofollow', 'noarchive', 'nosnippet', 'noimageindex' ) ), 'uniqueItems' => true ),
 						'schema'        => array( 'type' => array( 'object', 'null' ), 'description' => 'A Schema.org object containing @type, or an @graph. Pass null to remove it.' ),
 					),
@@ -77,7 +102,7 @@ class Mcp_Tool_Registry {
 			),
 			'audit_content_seo' => array(
 				'handler'     => array( 'Mcp_Tool_Seo', 'audit_content_seo' ),
-				'description' => 'Run deterministic on-page checks for a post or page. Results are diagnostics, not a search ranking score.',
+				'description' => 'Run deterministic on-page checks for a post, page, or other public content type. Results are diagnostics, not a search ranking score.',
 				'inputSchema' => array(
 					'type'                 => 'object',
 					'properties'           => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
@@ -350,6 +375,15 @@ class Mcp_Tool_Registry {
 				'annotations' => array( 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true ),
 			),
 		);
+
+		/**
+		 * Allows companion plugins to contribute tools to the existing authenticated
+		 * MCP endpoint instead of creating a second server and credential store.
+		 *
+		 * Each tool must use the same shape as the built-in definitions above:
+		 * handler, description, inputSchema, and annotations.
+		 */
+		self::$tools = apply_filters( 'mcp_connector_tools', self::$tools );
 
 		return self::$tools;
 	}

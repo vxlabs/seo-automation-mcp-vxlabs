@@ -84,7 +84,7 @@ class Mcp_Jsonrpc_Server {
 		return array(
 			'protocolVersion' => $negotiated,
 			'serverInfo'      => array(
-				'name'    => 'WordPress MCP Connector',
+				'name'    => 'Automator Agent',
 				'version' => MCP_CONNECTOR_VERSION,
 			),
 			'capabilities'    => array(

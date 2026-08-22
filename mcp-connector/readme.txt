@@ -1,8 +1,8 @@
-=== MCP Connector ===
+=== Automator Agent ===
 Requires at least: 6.5
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 
 Exposes this WordPress site as a remote MCP (Model Context Protocol) server, so AI
@@ -14,11 +14,11 @@ tool calls informed by a site-owned business context.
 1. Create a dedicated WordPress user for the connector (recommended role: Editor)
    under Users -> Add New. Avoid binding keys to an administrator account.
 2. Activate this plugin.
-3. Open MCP Connector -> Business Context and enter the business facts, audience,
+3. Open Automator Agent -> Business Context and enter the business facts, audience,
    brand voice, editorial rules, and SEO priorities Claude should follow.
 4. Optionally switch Settings -> Permalinks to a non-Plain structure for the clean
    `/mcp` URL (the `?rest_route=` fallback works either way).
-5. Go to MCP Connector -> API Keys, generate a key bound to the dedicated user,
+5. Go to Automator Agent -> API Keys, generate a key bound to the dedicated user,
    and copy the connector URL shown (only shown once).
 6. Add it to an MCP client. Prefer sending the key in an `Authorization: Bearer`
    header; the generated query-string URL is retained only for legacy clients.
@@ -36,6 +36,13 @@ Every tool call is authorized against the WordPress capabilities of the user the
 presented API key is bound to.
 
 == Changelog ==
+
+= 1.3.0 =
+* Added an "Edit SEO" modal to the SEO Dashboard so meta title, description,
+  canonical URL, focus topic, keywords, and robots directives can be edited
+  in place, without leaving the dashboard for the post editor.
+* Removed OG Image from the SEO Dashboard and from front-end output — it was
+  derived from the featured image rather than a real SEO field.
 
 = 1.1.0 =
 * Added private, revision-enabled Business Context with a structured admin form.

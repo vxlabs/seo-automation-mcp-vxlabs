@@ -16,11 +16,16 @@ class Mcp_Connector {
 
 	private function __construct() {
 		add_action( 'init', array( 'Mcp_Business_Context', 'register_post_type' ), 5 );
-		add_action( 'init', array( 'Mcp_Seo_Service', 'register' ), 6 );
+		add_action( 'init', array( 'Mcp_Seo_Service', 'register' ), 20 );
 		add_action( 'init', array( $this, 'register_rewrite_rule' ) );
+		add_action( 'init', array( $this, 'maybe_flag_rewrite_upgrade' ), 8 );
 		add_action( 'init', array( $this, 'maybe_flush_rewrites' ), 20 );
 		add_action( 'rest_api_init', array( 'Mcp_Rest_Controller', 'register_routes' ) );
 		add_filter( 'rest_post_dispatch', array( $this, 'maybe_add_retry_after_header' ), 10, 3 );
+
+		// Mcp_Technical_Seo::register() only wires up add_action()/add_filter()
+		// calls (admin_init, init, template_redirect, robots_txt) — safe to run now.
+		Mcp_Technical_Seo::register();
 	}
 
 	/**
@@ -35,6 +40,19 @@ class Mcp_Connector {
 		if ( get_option( 'mcp_connector_flush_rewrites' ) ) {
 			flush_rewrite_rules();
 			delete_option( 'mcp_connector_flush_rewrites' );
+		}
+	}
+
+	/**
+	 * Rewrite rules (e.g. Mcp_Technical_Seo's llms.txt rule) added in an
+	 * upgrade aren't present in an existing site's rewrite cache — activation
+	 * alone can't flush for a site that's already active. Runs after rules are
+	 * (re-)registered above but before maybe_flush_rewrites() consumes the flag.
+	 */
+	public function maybe_flag_rewrite_upgrade() {
+		if ( get_option( 'mcp_connector_rewrite_version' ) !== MCP_CONNECTOR_VERSION ) {
+			update_option( 'mcp_connector_flush_rewrites', 1 );
+			update_option( 'mcp_connector_rewrite_version', MCP_CONNECTOR_VERSION );
 		}
 	}
 

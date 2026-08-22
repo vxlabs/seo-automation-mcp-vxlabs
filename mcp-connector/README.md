@@ -1,8 +1,8 @@
-# MCP Connector for WordPress
+# Automator Agent for WordPress
 
 **Let Claude run your WordPress site.**
 
-MCP Connector turns any WordPress install into a remote [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server, so an AI client like Claude can manage your posts, pages, comments, and users through API-key-authenticated tool calls — with no separate backend, no cloud dependency, and no data leaving your server unless you point a client at it.
+Automator Agent turns any WordPress install into a remote [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server, so an AI client like Claude can manage your posts, pages, comments, and users through API-key-authenticated tool calls — with no separate backend, no cloud dependency, and no data leaving your server unless you point a client at it.
 
 - **Version:** 1.1.0
 - **Requires:** WordPress 6.5+, PHP 7.4+
@@ -33,9 +33,9 @@ MCP Connector turns any WordPress install into a remote [MCP](https://modelconte
 
 AI assistants like Claude are good at writing and organizing content, but by default they can't *touch* your website — you end up copying drafts out of a chat window and pasting them into the WordPress editor by hand.
 
-The **Model Context Protocol (MCP)** is an open standard that lets an AI client connect to external tools and act on your behalf. MCP Connector implements that standard *inside* WordPress. Once installed, you can say things like "draft a post about our product launch and set it to pending review," and Claude does it directly through your site — no copy-paste, no separate app to run.
+The **Model Context Protocol (MCP)** is an open standard that lets an AI client connect to external tools and act on your behalf. Automator Agent implements that standard *inside* WordPress. Once installed, you can say things like "draft a post about our product launch and set it to pending review," and Claude does it directly through your site — no copy-paste, no separate app to run.
 
-Most ways of doing this involve standing up a separate service that talks to the WordPress REST API from the outside, which means another server to host, secure, and keep online. MCP Connector was built to avoid all of that:
+Most ways of doing this involve standing up a separate service that talks to the WordPress REST API from the outside, which means another server to host, secure, and keep online. Automator Agent was built to avoid all of that:
 
 - **It lives entirely inside WordPress.** No Node service, no external database, no extra host. It runs on WordPress's own database layer, so it works on ordinary shared hosting.
 - **It never phones home.** The plugin makes no outbound network calls of its own. It simply exposes one endpoint that *you* choose to hand to a client.
@@ -64,7 +64,7 @@ Because authorization defers to WordPress itself, there is no parallel permissio
 
 ## What Claude can do
 
-Twenty-three tools across business context, content, SEO, media, comments, and users. Each is gated by a genuine WordPress capability:
+Twenty-five tools across business context, technical SEO, content, media, comments, and users. Each is gated by a genuine WordPress capability:
 
 | Tool | Kind | What it does | Requires |
 |---|---|---|---|
@@ -75,8 +75,9 @@ Twenty-three tools across business context, content, SEO, media, comments, and u
 | `list_comments` / `get_comment` | Read | Read comments | `moderate_comments` to see non-approved |
 | `moderate_comment` | Write | Approve, spam, trash or unapprove | `moderate_comments` |
 | `list_users` / `get_user` | Read | Read users (email addresses are never returned) | `list_users` |
-| `get_business_context` | Read | Read business facts and editorial/SEO guidance | Content editing capability |
-| `update_business_context` | Write | Update selected context fields with revision history | `manage_options` |
+| `get_business_context` | Read | Read the freeform business context (facts, audience, positioning, editorial guardrails) | Content editing capability |
+| `update_business_context` | Write | Replace the business context with new freeform text | `manage_options` |
+| `get_technical_seo` / `update_technical_seo` | Read/Write | Read or write robots.txt, llms.txt, and the site-wide JSON-LD block | `manage_options` |
 | `get_seo_metadata` / `audit_content_seo` | Read | Inspect metadata, JSON-LD, and deterministic content checks | Read the content |
 | `update_seo_metadata` | Write | Set title, description, canonical, robots, focus topic, and JSON-LD | Edit the content |
 | `list_content_revisions` / `get_content_revision` | Read | Inspect WordPress revisions before or after an edit | Read the content |
@@ -109,7 +110,7 @@ No external services, API accounts, or command-line access are needed to install
 **Option B — Copy via FTP / file manager**
 
 1. Copy the `mcp-connector` folder into `wp-content/plugins/`.
-2. Go to **Plugins** in your dashboard and click **Activate** under *MCP Connector*.
+2. Go to **Plugins** in your dashboard and click **Activate** under *Automator Agent*.
 
 Then follow [Setup](#setup--step-by-step) below.
 
@@ -125,9 +126,13 @@ Go to **Users → Add New** and create an account just for the connector. Give i
 
 ### 2. Fill in Business Context
 
-Open **MCP Connector → Business Context** and provide the public business facts, audience, positioning, brand voice, approved claims, restricted claims, priority topics, and internal URLs Claude should use. This information is private in WordPress but is returned to authorized MCP clients, so do not enter secrets.
+Open **Automator Agent → Business Context** and write a freeform briefing: business facts, audience, positioning, brand voice, approved and restricted claims, priority topics, and internal URLs Claude should use. This information is private in WordPress but is returned to authorized MCP clients, so do not enter secrets.
 
-The context is stored as a private WordPress record with revision history. Only an Administrator can change it through MCP; content editors can read it for writing work.
+The context is stored as a private WordPress record with revision history. Only an Administrator can change it through MCP; content editors can read it for writing work. You can also have Claude draft or refine it directly over MCP using the `get_business_context` / `update_business_context` tools.
+
+### 2a. (Optional) Set up Technical SEO
+
+Open **Automator Agent → Technical SEO** to set a custom robots.txt, an `llms.txt` file (served at `/llms.txt` and `/llm.txt`), and a site-wide JSON-LD block — each a plain textarea, no structured forms. All three can also be read and written by Claude over MCP with the `get_technical_seo` / `update_technical_seo` tools, using your Business Context and site content as source material.
 
 ### 3. Serve your site over HTTPS
 
@@ -141,7 +146,7 @@ If you leave permalinks on **Plain**, everything still works — you'll use `?re
 
 ### 5. Generate an API key
 
-1. Go to **MCP Connector → API Keys**.
+1. Go to **Automator Agent → API Keys**.
 2. Give the key a **Label** (e.g. *Claude Code – laptop*) so you can recognize it later.
 3. Under **Acts as**, pick the dedicated user you created in step 1.
 4. Click **Generate New Key**.
@@ -190,7 +195,7 @@ There are two equivalent ways to present the key — use whichever your client s
 
 ## SEO ownership and plugin compatibility
 
-When no supported SEO plugin is detected, MCP Connector can output its own title, description, canonical, robots directives, per-page JSON-LD, and homepage Organization JSON-LD. It does not output a meta-keywords tag.
+When no supported SEO plugin is detected, Automator Agent can output its own title, description, canonical, robots directives, per-page JSON-LD, and the site-wide JSON-LD block set under **Technical SEO**. It does not output a meta-keywords tag. The robots.txt and llms.txt overrides are connector-only and apply regardless of which SEO plugin is active.
 
 When Yoast SEO, Rank Math, or AIOSEO is active, connector-native frontend output and SEO writes are disabled to prevent duplicate or contradictory markup. Reading and content-level audits still work. Provider-specific write adapters are planned for a later release.
 
@@ -200,7 +205,7 @@ Keys are stored only as a SHA-256 hash. The plaintext is shown once at generatio
 
 ## Managing keys
 
-Everything lives under **MCP Connector → API Keys**:
+Everything lives under **Automator Agent → API Keys**:
 
 - **Multiple keys.** Generate a separate key per client or per person, each with its own label — so you can revoke one without disrupting the others.
 - **Revoke instantly.** Delete a key from the list and it stops working on the next request.
@@ -211,7 +216,7 @@ Everything lives under **MCP Connector → API Keys**:
 
 ## Security
 
-MCP Connector is designed to fail safe:
+Automator Agent is designed to fail safe:
 
 - **One source of truth for permissions.** Every call is authorized against the bound user's real WordPress capabilities. Bind to an Editor, not an Administrator.
 - **Keys hashed, shown once.** Only a SHA-256 hash is stored; plaintext appears a single time at generation.

@@ -6,35 +6,34 @@ if ( ! defined( 'ABSPATH' ) ) {
 $list_table = new Mcp_Keys_List_Table();
 $list_table->prepare_items();
 ?>
-<div class="wrap mcp-connector-wrap">
-	<h1>MCP Connector</h1>
-	<p>Generate API keys to let Claude (or another MCP-compatible client) use the site's content and SEO tools. Configure the source material first under <a href="<?php echo esc_url( admin_url( 'admin.php?page=mcp-business-context' ) ); ?>">Business Context</a>.</p>
-	<div class="notice notice-warning inline">
-		<p><strong>API-key URLs are a legacy compatibility mode.</strong> Prefer the <code>Authorization: Bearer</code> header whenever your MCP client supports custom headers. Query-string credentials may be recorded in server or proxy logs.</p>
+<p>Generate API keys to let Claude (or another MCP-compatible client) use the site's content and SEO tools. Configure the source material first under <a href="<?php echo esc_url( admin_url( 'admin.php?page=mcp-connector&tab=context' ) ); ?>">Business Context</a>.</p>
+<div class="notice notice-warning inline">
+	<p><strong>API-key URLs are a legacy compatibility mode.</strong> Prefer the <code>Authorization: Bearer</code> header whenever your MCP client supports custom headers. Query-string credentials may be recorded in server or proxy logs.</p>
+</div>
+
+<?php if ( ! $site_is_https ) : ?>
+	<div class="notice notice-error">
+		<p>
+			<strong>This site is not being served over HTTPS.</strong> API keys sent to <code>/mcp</code> travel in the
+			URL query string or an Authorization header — over plain HTTP these are visible to anyone able to observe
+			the network traffic (and, if using the query-param form, may also be logged by servers/proxies along the
+			way). Do not use this connector in production until the site has a valid TLS certificate.
+		</p>
 	</div>
+<?php endif; ?>
 
-	<?php if ( ! $site_is_https ) : ?>
-		<div class="notice notice-error">
-			<p>
-				<strong>This site is not being served over HTTPS.</strong> API keys sent to <code>/mcp</code> travel in the
-				URL query string or an Authorization header — over plain HTTP these are visible to anyone able to observe
-				the network traffic (and, if using the query-param form, may also be logged by servers/proxies along the
-				way). Do not use this connector in production until the site has a valid TLS certificate.
-			</p>
-		</div>
-	<?php endif; ?>
+<?php if ( $permalinks_are_plain ) : ?>
+	<div class="notice notice-warning">
+		<p>
+			Permalinks are currently set to "Plain." The connector still works via the URL below, but for the
+			clean <code>/mcp</code> form, switch to a non-Plain structure under
+			<a href="<?php echo esc_url( admin_url( 'options-permalink.php' ) ); ?>">Settings &rarr; Permalinks</a>.
+		</p>
+	</div>
+<?php endif; ?>
 
-	<?php if ( $permalinks_are_plain ) : ?>
-		<div class="notice notice-warning">
-			<p>
-				Permalinks are currently set to "Plain." The connector still works via the URL below, but for the
-				clean <code>/mcp</code> form, switch to a non-Plain structure under
-				<a href="<?php echo esc_url( admin_url( 'options-permalink.php' ) ); ?>">Settings &rarr; Permalinks</a>.
-			</p>
-		</div>
-	<?php endif; ?>
-
-	<div class="mcp-card">
+<div class="postbox">
+	<div class="inside">
 		<h2>Generate New API Key</h2>
 		<table class="form-table">
 			<tr>
@@ -60,10 +59,10 @@ $list_table->prepare_items();
 			<button type="button" class="button button-primary" id="mcp-generate-key">Generate New Key</button>
 		</p>
 	</div>
-
-	<h2>Existing Keys</h2>
-	<?php $list_table->display(); ?>
 </div>
+
+<h2>Existing Keys</h2>
+<?php $list_table->display(); ?>
 
 <div id="mcp-reveal-modal" class="mcp-modal" style="display:none;">
 	<div class="mcp-modal-content">

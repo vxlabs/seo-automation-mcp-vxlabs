@@ -34,59 +34,87 @@ class Mcp_Business_Context {
 	}
 
 	/**
-	 * Field definitions are shared by the admin form, sanitization, and MCP output.
+	 * Labels for the pre-1.2.0 structured field set. Used only to render a
+	 * readable fallback the first time a site with old JSON-shaped context is
+	 * read after upgrading — the plugin no longer collects or stores context
+	 * this way.
 	 */
-	public static function field_definitions() {
+	private static function legacy_field_labels() {
 		return array(
-			'business_name'        => array( 'label' => 'Public business name', 'type' => 'text', 'section' => 'identity' ),
-			'legal_name'           => array( 'label' => 'Legal name', 'type' => 'text', 'section' => 'identity' ),
-			'website_url'          => array( 'label' => 'Canonical website URL', 'type' => 'url', 'section' => 'identity' ),
-			'business_description' => array( 'label' => 'Business description', 'type' => 'textarea', 'section' => 'identity' ),
-			'organization_type'    => array( 'label' => 'Schema.org organization type', 'type' => 'text', 'section' => 'identity', 'placeholder' => 'Organization, LocalBusiness, ProfessionalService…' ),
-			'founding_date'        => array( 'label' => 'Founding date', 'type' => 'text', 'section' => 'identity', 'placeholder' => 'YYYY or YYYY-MM-DD' ),
-			'logo_url'             => array( 'label' => 'Logo URL', 'type' => 'url', 'section' => 'identity' ),
-			'email'                => array( 'label' => 'Public contact email', 'type' => 'email', 'section' => 'contact' ),
-			'telephone'            => array( 'label' => 'Public telephone', 'type' => 'text', 'section' => 'contact' ),
-			'contact_type'         => array( 'label' => 'Contact type', 'type' => 'text', 'section' => 'contact', 'placeholder' => 'customer service, sales, reservations…' ),
-			'address'              => array( 'label' => 'Public postal address', 'type' => 'textarea', 'section' => 'contact' ),
-			'address_locality'     => array( 'label' => 'City / locality', 'type' => 'text', 'section' => 'contact' ),
-			'address_region'       => array( 'label' => 'State / region', 'type' => 'text', 'section' => 'contact' ),
-			'postal_code'          => array( 'label' => 'Postal code', 'type' => 'text', 'section' => 'contact' ),
-			'address_country'      => array( 'label' => 'Country code', 'type' => 'text', 'section' => 'contact', 'placeholder' => 'IN, US, GB…' ),
-			'opening_hours'        => array( 'label' => 'Opening hours', 'type' => 'lines', 'section' => 'contact', 'placeholder' => 'Mo-Fr 09:00-17:00' ),
-			'price_range'          => array( 'label' => 'Public price range', 'type' => 'text', 'section' => 'contact', 'placeholder' => '$$, ₹₹, or a truthful short range' ),
-			'service_areas'        => array( 'label' => 'Locations / service areas', 'type' => 'lines', 'section' => 'contact' ),
-			'languages'            => array( 'label' => 'Languages', 'type' => 'lines', 'section' => 'contact' ),
-			'social_profiles'      => array( 'label' => 'Official profile URLs', 'type' => 'url_lines', 'section' => 'contact' ),
-			'products_services'    => array( 'label' => 'Products and services', 'type' => 'textarea', 'section' => 'positioning' ),
-			'target_audiences'     => array( 'label' => 'Target audiences', 'type' => 'textarea', 'section' => 'positioning' ),
-			'differentiators'      => array( 'label' => 'Differentiators and proof points', 'type' => 'textarea', 'section' => 'positioning' ),
-			'competitors'          => array( 'label' => 'Competitors / comparison set', 'type' => 'lines', 'section' => 'positioning' ),
-			'brand_voice'          => array( 'label' => 'Brand voice and writing style', 'type' => 'textarea', 'section' => 'editorial' ),
-			'author_guidelines'    => array( 'label' => 'Author and editorial guidelines', 'type' => 'textarea', 'section' => 'editorial' ),
-			'preferred_ctas'       => array( 'label' => 'Preferred calls to action', 'type' => 'lines', 'section' => 'editorial' ),
-			'approved_claims'      => array( 'label' => 'Approved claims', 'type' => 'textarea', 'section' => 'editorial' ),
-			'prohibited_claims'    => array( 'label' => 'Claims and language to avoid', 'type' => 'textarea', 'section' => 'editorial' ),
-			'compliance_notes'     => array( 'label' => 'Compliance notes / required disclaimers', 'type' => 'textarea', 'section' => 'editorial' ),
-			'primary_topics'       => array( 'label' => 'Priority topics and search themes', 'type' => 'lines', 'section' => 'seo' ),
-			'priority_urls'        => array( 'label' => 'Priority internal URLs', 'type' => 'url_lines', 'section' => 'seo' ),
+			'business_name'        => 'Public business name',
+			'legal_name'           => 'Legal name',
+			'website_url'          => 'Canonical website URL',
+			'business_description' => 'Business description',
+			'organization_type'    => 'Schema.org organization type',
+			'founding_date'        => 'Founding date',
+			'logo_url'             => 'Logo URL',
+			'email'                => 'Public contact email',
+			'telephone'            => 'Public telephone',
+			'contact_type'         => 'Contact type',
+			'address'              => 'Public postal address',
+			'address_locality'     => 'City / locality',
+			'address_region'       => 'State / region',
+			'postal_code'          => 'Postal code',
+			'address_country'      => 'Country code',
+			'opening_hours'        => 'Opening hours',
+			'price_range'          => 'Public price range',
+			'service_areas'        => 'Locations / service areas',
+			'languages'            => 'Languages',
+			'social_profiles'      => 'Official profile URLs',
+			'products_services'    => 'Products and services',
+			'target_audiences'     => 'Target audiences',
+			'differentiators'      => 'Differentiators and proof points',
+			'competitors'          => 'Competitors / comparison set',
+			'brand_voice'          => 'Brand voice and writing style',
+			'author_guidelines'    => 'Author and editorial guidelines',
+			'preferred_ctas'       => 'Preferred calls to action',
+			'approved_claims'      => 'Approved claims',
+			'prohibited_claims'    => 'Claims and language to avoid',
+			'compliance_notes'     => 'Compliance notes / required disclaimers',
+			'primary_topics'       => 'Priority topics and search themes',
+			'priority_urls'        => 'Priority internal URLs',
 		);
+	}
+
+	/**
+	 * Flattens the old 29-key JSON shape into readable "Label: value" lines.
+	 * This does not write anything back — the flattened text only persists
+	 * once the owner saves the context again through the new textarea.
+	 */
+	private static function flatten_legacy_context( $decoded ) {
+		$labels = self::legacy_field_labels();
+		$lines  = array();
+
+		foreach ( $labels as $key => $label ) {
+			if ( ! array_key_exists( $key, $decoded ) ) {
+				continue;
+			}
+			$value = $decoded[ $key ];
+			if ( is_array( $value ) ) {
+				$value = implode( ', ', array_filter( $value ) );
+			}
+			$value = trim( (string) $value );
+			if ( '' === $value ) {
+				continue;
+			}
+			$lines[] = $label . ': ' . $value;
+		}
+
+		return implode( "\n", $lines );
 	}
 
 	public static function get() {
 		$post = self::get_context_post();
-		$data = array();
+		$text = '';
 
-		if ( $post && $post->post_content ) {
+		if ( $post && '' !== trim( (string) $post->post_content ) ) {
 			$decoded = json_decode( $post->post_content, true );
-			if ( is_array( $decoded ) ) {
-				$data = $decoded;
-			}
-		}
-
-		foreach ( self::field_definitions() as $key => $definition ) {
-			if ( ! array_key_exists( $key, $data ) ) {
-				$data[ $key ] = in_array( $definition['type'], array( 'lines', 'url_lines' ), true ) ? array() : '';
+			if ( is_array( $decoded ) && JSON_ERROR_NONE === json_last_error() ) {
+				// Pre-1.2.0 structured context. Present it as readable text
+				// without rewriting the stored post.
+				$text = self::flatten_legacy_context( $decoded );
+			} else {
+				$text = $post->post_content;
 			}
 		}
 
@@ -94,37 +122,30 @@ class Mcp_Business_Context {
 		$revision  = $revisions ? reset( $revisions ) : null;
 
 		return array(
-			'context'      => $data,
-			'configured'   => '' !== $data['business_name'],
-			'context_id'   => $post ? (int) $post->ID : null,
+			'context_text'       => $text,
+			'configured'         => '' !== trim( $text ),
+			'context_id'         => $post ? (int) $post->ID : null,
 			'latest_revision_id' => $revision ? (int) $revision->ID : null,
-			'last_updated' => $post ? get_post_modified_time( 'c', true, $post ) : null,
+			'last_updated'       => $post ? get_post_modified_time( 'c', true, $post ) : null,
 		);
 	}
 
 	/**
 	 * @return array|WP_Error
 	 */
-	public static function update( $input, $user_id ) {
-		if ( ! is_array( $input ) ) {
-			return new WP_Error( 'mcp_invalid_context', 'Business context must be an object.' );
+	public static function update( $text, $user_id ) {
+		if ( ! is_string( $text ) ) {
+			return new WP_Error( 'mcp_invalid_context', 'Business context must be a string.' );
 		}
 
-		$current   = self::get();
-		$sanitized = $current['context'];
-
-		foreach ( self::field_definitions() as $key => $definition ) {
-			if ( array_key_exists( $key, $input ) ) {
-				$sanitized[ $key ] = self::sanitize_value( $input[ $key ], $definition['type'] );
-			}
-		}
+		$sanitized = sanitize_textarea_field( $text );
 
 		$post    = self::get_context_post();
 		$postarr = array(
 			'post_type'    => self::POST_TYPE,
 			'post_status'  => 'private',
 			'post_title'   => 'Site Business Context',
-			'post_content' => wp_json_encode( $sanitized, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ),
+			'post_content' => $sanitized,
 			'post_author'  => absint( $user_id ),
 		);
 
@@ -163,28 +184,5 @@ class Mcp_Business_Context {
 		);
 
 		return $posts ? $posts[0] : null;
-	}
-
-	private static function sanitize_value( $value, $type ) {
-		if ( in_array( $type, array( 'lines', 'url_lines' ), true ) ) {
-			$values = is_array( $value ) ? $value : preg_split( '/\r\n|\r|\n/', (string) $value );
-			$values = array_filter( array_map( 'trim', $values ) );
-			if ( 'url_lines' === $type ) {
-				return array_values( array_filter( array_map( 'esc_url_raw', $values ) ) );
-			}
-			return array_values( array_map( 'sanitize_text_field', $values ) );
-		}
-
-		if ( 'url' === $type ) {
-			return esc_url_raw( $value );
-		}
-		if ( 'email' === $type ) {
-			return sanitize_email( $value );
-		}
-		if ( 'textarea' === $type ) {
-			return sanitize_textarea_field( $value );
-		}
-
-		return sanitize_text_field( $value );
 	}
 }

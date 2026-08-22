@@ -18,8 +18,24 @@ class Mcp_Tool_Seo {
 			return new WP_Error( 'mcp_forbidden', 'Only a site administrator can update business context through MCP.' );
 		}
 
-		$context = isset( $args['context'] ) && is_array( $args['context'] ) ? $args['context'] : array();
+		$context = isset( $args['context'] ) ? (string) $args['context'] : '';
 		return Mcp_Business_Context::update( $context, get_current_user_id() );
+	}
+
+	public static function get_technical_seo( $args ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return new WP_Error( 'mcp_forbidden', 'You do not have permission to read technical SEO settings.' );
+		}
+
+		return Mcp_Technical_Seo::get_all();
+	}
+
+	public static function update_technical_seo( $args ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return new WP_Error( 'mcp_forbidden', 'Only a site administrator can update technical SEO settings through MCP.' );
+		}
+
+		return Mcp_Technical_Seo::update( $args );
 	}
 
 	public static function get_seo_metadata( $args ) {
